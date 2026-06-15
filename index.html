@@ -386,9 +386,13 @@
   <div class="empty" id="emptyMsg" style="display:none;">아직 기록이 없습니다.</div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const STORAGE_KEY = 'ggm-entries';
-let entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+const SUPABASE_URL = 'https://olphezpuyauwgrquaklz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_o7qBhcmQ88GwuzsGxh41_w_AnNhLHtO';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let entries = [];
 
 const form = document.getElementById('entryForm');
 const dateInput = document.getElementById('date');
@@ -419,8 +423,18 @@ function toDateStr(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+async function loadEntries() {
+  const { data, error } = await db
+    .from('entries')
+    .select('*')
+    .order('date', { ascending: false })
+    .order('id', { ascending: false });
+  if (error) {
+    console.error('불러오기 실패:', error);
+    return;
+  }
+  entries = data;
+  render();
 }
 
 function renderCalendar() {
@@ -516,18 +530,24 @@ function render() {
   document.getElementById('totalBalance').textContent = formatWon(totalIncome - totalExpense);
 }
 
-form.addEventListener('submit', (e) => {
+form.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  entries.push({
-    id: Date.now(),
+  const newEntry = {
     date: dateInput.value,
     type: typeInput.value,
     category: categoryInput.value.trim(),
     amount: Number(amountInput.value)
-  });
+  };
 
-  save();
+  const { data, error } = await db.from('entries').insert(newEntry).select().single();
+  if (error) {
+    console.error('추가 실패:', error);
+    alert('추가에 실패했습니다.');
+    return;
+  }
+
+  entries.push(data);
   render();
 
   categoryInput.value = '';
@@ -535,11 +555,16 @@ form.addEventListener('submit', (e) => {
   categoryInput.focus();
 });
 
-entryList.addEventListener('click', (e) => {
+entryList.addEventListener('click', async (e) => {
   if (e.target.classList.contains('del-btn')) {
     const id = Number(e.target.dataset.id);
+    const { error } = await db.from('entries').delete().eq('id', id);
+    if (error) {
+      console.error('삭제 실패:', error);
+      alert('삭제에 실패했습니다.');
+      return;
+    }
     entries = entries.filter(entry => entry.id !== id);
-    save();
     render();
   }
 });
@@ -574,6 +599,7 @@ nextMonthBtn.addEventListener('click', () => {
 });
 
 render();
+loadEntries();
 </script>
 </body>
 </html>
