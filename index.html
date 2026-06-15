@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>가계부</title>
+<style>
+  :root {
+    --bg1: #0a0a12;
+    --bg2: #15101f;
+    --bg3: #0d0d18;
+    --panel: rgba(255,255,255,0.045);
+    --panel-border: rgba(212,175,138,0.22);
+    --gold: #d8b878;
+    --gold-bright: #f3dca6;
+    --text: #ece8f2;
+    --text-dim: #9590a8;
+    --income: #6fe7c8;
+    --expense: #ff7a93;
+  }
+  * { box-sizing: border-box; }
+
+  @keyframes bgShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes shimmer {
+    to { background-position: 200% center; }
+  }
+  @keyframes pulseRing {
+    0% { box-shadow: 0 0 0 0 rgba(216,184,120,0.55); }
+    70% { box-shadow: 0 0 0 6px rgba(216,184,120,0); }
+    100% { box-shadow: 0 0 0 0 rgba(216,184,120,0); }
+  }
+  @keyframes sheen {
+    0% { transform: translateX(-120%) skewX(-15deg); }
+    100% { transform: translateX(220%) skewX(-15deg); }
+  }
+
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    margin: 0;
+    padding: 24px;
+    min-height: 100vh;
+    color: var(--text);
+    background: linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3), var(--bg1));
+    background-size: 300% 300%;
+    animation: bgShift 22s ease infinite;
+  }
+
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--panel);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid var(--panel-border);
+    border-radius: 22px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+    padding: 28px;
+    animation: fadeInUp 0.7s ease both;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 25px;
+    margin: 0 0 4px;
+    letter-spacing: 3px;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--gold), var(--gold-bright), var(--gold));
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 5s linear infinite;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 22px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  /* Calendar */
+  .calendar { margin-bottom: 22px; }
+  .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .cal-nav {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--panel-border);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--gold-bright);
+    font-weight: bold;
+    transition: all 0.25s ease;
+  }
+  .cal-nav:hover {
+    background: var(--gold);
+    color: #1a1420;
+    box-shadow: 0 0 16px rgba(216,184,120,0.5);
+    transform: scale(1.08);
+  }
+  .month-label {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 2px;
+    color: var(--gold-bright);
+  }
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+  }
+  .cal-dow {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: bold;
+    padding-bottom: 6px;
+    letter-spacing: 1px;
+  }
+  .cal-dow.sun { color: var(--expense); }
+  .cal-dow.sat { color: var(--income); }
+  .cal-day {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 4px 2px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    background: rgba(255,255,255,0.02);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+    overflow: hidden;
+    animation: fadeIn 0.5s ease both;
+  }
+  .cal-day:hover {
+    background: rgba(216,184,120,0.10);
+    border-color: rgba(216,184,120,0.4);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 16px rgba(216,184,120,0.18);
+  }
+  .cal-day.empty { border: none; cursor: default; background: transparent; animation: none; }
+  .cal-day.empty:hover { transform: none; box-shadow: none; }
+  .cal-day .day-num { font-size: 11px; font-weight: bold; color: var(--text); }
+  .cal-day.today {
+    border-color: var(--gold);
+    animation: pulseRing 2.4s ease infinite;
+  }
+  .cal-day.selected {
+    background: linear-gradient(135deg, rgba(216,184,120,0.32), rgba(216,184,120,0.10));
+    border-color: var(--gold-bright);
+    box-shadow: 0 0 18px rgba(216,184,120,0.35);
+  }
+  .cal-day .day-income { color: var(--income); font-size: 9px; line-height: 1.3; }
+  .cal-day .day-expense { color: var(--expense); font-size: 9px; line-height: 1.3; }
+
+  /* Summary */
+  .summary {
+    display: flex;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 22px;
+    text-align: center;
+  }
+  .summary div { flex: 1; }
+  .summary .label {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .summary .value {
+    font-size: 19px;
+    font-weight: 700;
+    margin-top: 6px;
+    transition: transform 0.25s ease;
+  }
+  .income { color: var(--income); }
+  .expense { color: var(--expense); }
+  .balance { color: var(--gold-bright); }
+
+  /* Form */
+  form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  form input, form select, form button {
+    padding: 11px;
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    font-size: 14px;
+    background: rgba(255,255,255,0.03);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-family: inherit;
+  }
+  form input::placeholder { color: var(--text-dim); }
+  form input:focus, form select:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(216,184,120,0.18);
+  }
+  form select option { background: #1a1420; color: var(--text); }
+  form .full { grid-column: 1 / -1; }
+  form button {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--gold), #b8915a);
+    color: #1a1420;
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    letter-spacing: 1px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  form button::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 40%; height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+    transform: translateX(-120%) skewX(-15deg);
+  }
+  form button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(216,184,120,0.4);
+  }
+  form button:hover::after {
+    animation: sheen 0.9s ease;
+  }
+
+  /* List */
+  .list-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--gold-bright);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .show-all-btn {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 5px 12px;
+    font-size: 11px;
+    color: var(--gold-bright);
+    cursor: pointer;
+    font-weight: bold;
+    letter-spacing: 1px;
+    transition: all 0.2s ease;
+  }
+  .show-all-btn:hover {
+    background: var(--gold);
+    color: #1a1420;
+    box-shadow: 0 0 14px rgba(216,184,120,0.4);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    padding: 11px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    text-align: center;
+  }
+  th {
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  tbody tr {
+    animation: fadeIn 0.4s ease both;
+    transition: background 0.2s ease;
+  }
+  tbody tr:hover { background: rgba(216,184,120,0.06); }
+  td.amount-income { color: var(--income); font-weight: bold; }
+  td.amount-expense { color: var(--expense); font-weight: bold; }
+  .del-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 14px;
+    transition: color 0.2s ease, transform 0.2s ease;
+  }
+  .del-btn:hover { color: var(--expense); transform: scale(1.2) rotate(90deg); }
+  .empty {
+    text-align: center;
+    color: var(--text-dim);
+    padding: 24px 0;
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>✦ 가 계 부 ✦</h1>
+  <div class="subtitle">Personal Finance Ledger</div>
+
+  <div class="calendar">
+    <div class="calendar-header">
+      <button type="button" class="cal-nav" id="prevMonth">‹</button>
+      <div class="month-label" id="monthLabel"></div>
+      <button type="button" class="cal-nav" id="nextMonth">›</button>
+    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+  </div>
+
+  <div class="summary">
+    <div>
+      <div class="label">수입</div>
+      <div class="value income" id="totalIncome">0원</div>
+    </div>
+    <div>
+      <div class="label">지출</div>
+      <div class="value expense" id="totalExpense">0원</div>
+    </div>
+    <div>
+      <div class="label">잔액</div>
+      <div class="value balance" id="totalBalance">0원</div>
+    </div>
+  </div>
+
+  <form id="entryForm">
+    <input type="date" id="date" required>
+    <select id="type">
+      <option value="expense">지출</option>
+      <option value="income">수입</option>
+    </select>
+    <input type="text" id="category" placeholder="카테고리 (예: 식비)" class="full" required>
+    <input type="number" id="amount" placeholder="금액" min="1" required>
+    <button type="submit">추가</button>
+  </form>
+
+  <div class="list-title">
+    <span id="listTitle">전체 내역</span>
+    <button type="button" class="show-all-btn" id="showAllBtn" style="display:none;">전체 보기</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>날짜</th>
+        <th>카테고리</th>
+        <th>금액</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="entryList"></tbody>
+  </table>
+  <div class="empty" id="emptyMsg" style="display:none;">아직 기록이 없습니다.</div>
+</div>
+
+<script>
+const STORAGE_KEY = 'ggm-entries';
+let entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+const form = document.getElementById('entryForm');
+const dateInput = document.getElementById('date');
+const typeInput = document.getElementById('type');
+const categoryInput = document.getElementById('category');
+const amountInput = document.getElementById('amount');
+const entryList = document.getElementById('entryList');
+const emptyMsg = document.getElementById('emptyMsg');
+const calendarGrid = document.getElementById('calendarGrid');
+const monthLabel = document.getElementById('monthLabel');
+const prevMonthBtn = document.getElementById('prevMonth');
+const nextMonthBtn = document.getElementById('nextMonth');
+const listTitle = document.getElementById('listTitle');
+const showAllBtn = document.getElementById('showAllBtn');
+
+const today = new Date();
+let viewYear = today.getFullYear();
+let viewMonth = today.getMonth(); // 0-indexed
+let selectedDate = null; // 'YYYY-MM-DD' or null
+
+dateInput.value = today.toISOString().slice(0, 10);
+
+function formatWon(num) {
+  return num.toLocaleString('ko-KR') + '원';
+}
+
+function toDateStr(year, month, day) {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+
+function renderCalendar() {
+  monthLabel.textContent = `${viewYear}년 ${viewMonth + 1}월`;
+  calendarGrid.innerHTML = '';
+
+  const dowNames = ['일', '월', '화', '수', '목', '금', '토'];
+  dowNames.forEach((name, i) => {
+    const dow = document.createElement('div');
+    dow.className = 'cal-dow' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '');
+    dow.textContent = name;
+    calendarGrid.appendChild(dow);
+  });
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const todayStr = today.toISOString().slice(0, 10);
+
+  for (let i = 0; i < firstDay; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    calendarGrid.appendChild(empty);
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = toDateStr(viewYear, viewMonth, day);
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+    if (dateStr === todayStr) cell.classList.add('today');
+    if (dateStr === selectedDate) cell.classList.add('selected');
+    cell.dataset.date = dateStr;
+    cell.style.animationDelay = `${(firstDay + day) * 0.012}s`;
+
+    const dayIncome = entries.filter(e => e.date === dateStr && e.type === 'income')
+      .reduce((sum, e) => sum + e.amount, 0);
+    const dayExpense = entries.filter(e => e.date === dateStr && e.type === 'expense')
+      .reduce((sum, e) => sum + e.amount, 0);
+
+    let html = `<div class="day-num">${day}</div>`;
+    if (dayIncome > 0) html += `<div class="day-income">+${dayIncome.toLocaleString('ko-KR')}</div>`;
+    if (dayExpense > 0) html += `<div class="day-expense">-${dayExpense.toLocaleString('ko-KR')}</div>`;
+    cell.innerHTML = html;
+
+    calendarGrid.appendChild(cell);
+  }
+}
+
+function render() {
+  renderCalendar();
+  entryList.innerHTML = '';
+
+  let filtered;
+  if (selectedDate) {
+    filtered = entries.filter(e => e.date === selectedDate);
+    const [y, m, d] = selectedDate.split('-');
+    listTitle.textContent = `${y}년 ${Number(m)}월 ${Number(d)}일 내역`;
+    showAllBtn.style.display = 'inline-block';
+  } else {
+    const monthPrefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
+    filtered = entries.filter(e => e.date.startsWith(monthPrefix));
+    listTitle.textContent = `${viewYear}년 ${viewMonth + 1}월 전체 내역`;
+    showAllBtn.style.display = 'none';
+  }
+
+  const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+
+  if (sorted.length === 0) {
+    emptyMsg.style.display = 'block';
+  } else {
+    emptyMsg.style.display = 'none';
+    sorted.forEach((entry, i) => {
+      const tr = document.createElement('tr');
+      tr.style.animationDelay = `${i * 0.04}s`;
+
+      const amountClass = entry.type === 'income' ? 'amount-income' : 'amount-expense';
+      const sign = entry.type === 'income' ? '+' : '-';
+
+      tr.innerHTML = `
+        <td>${entry.date}</td>
+        <td>${entry.category}</td>
+        <td class="${amountClass}">${sign}${formatWon(entry.amount)}</td>
+        <td><button class="del-btn" data-id="${entry.id}">✕</button></td>
+      `;
+      entryList.appendChild(tr);
+    });
+  }
+
+  const totalIncome = filtered.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
+  const totalExpense = filtered.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
+
+  document.getElementById('totalIncome').textContent = formatWon(totalIncome);
+  document.getElementById('totalExpense').textContent = formatWon(totalExpense);
+  document.getElementById('totalBalance').textContent = formatWon(totalIncome - totalExpense);
+}
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  entries.push({
+    id: Date.now(),
+    date: dateInput.value,
+    type: typeInput.value,
+    category: categoryInput.value.trim(),
+    amount: Number(amountInput.value)
+  });
+
+  save();
+  render();
+
+  categoryInput.value = '';
+  amountInput.value = '';
+  categoryInput.focus();
+});
+
+entryList.addEventListener('click', (e) => {
+  if (e.target.classList.contains('del-btn')) {
+    const id = Number(e.target.dataset.id);
+    entries = entries.filter(entry => entry.id !== id);
+    save();
+    render();
+  }
+});
+
+calendarGrid.addEventListener('click', (e) => {
+  const cell = e.target.closest('.cal-day');
+  if (!cell || cell.classList.contains('empty')) return;
+
+  const date = cell.dataset.date;
+  selectedDate = selectedDate === date ? null : date;
+  if (selectedDate) dateInput.value = selectedDate;
+  render();
+});
+
+showAllBtn.addEventListener('click', () => {
+  selectedDate = null;
+  render();
+});
+
+prevMonthBtn.addEventListener('click', () => {
+  viewMonth--;
+  if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+  selectedDate = null;
+  render();
+});
+
+nextMonthBtn.addEventListener('click', () => {
+  viewMonth++;
+  if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+  selectedDate = null;
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
